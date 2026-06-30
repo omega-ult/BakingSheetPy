@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bakingsheet"
+version = "0.1.0"
+description = "Python port of BakingSheet: code-defined datasheet schema -> import from Excel/CSV/Google -> export JSON to multiple directories"
+requires-python = ">=3.10"
+dependencies = [
+    "PyYAML>=6.0",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+google = ["google-api-python-client>=2.100", "google-auth>=2.25"]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+bakingsheet = "bakingsheet.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
