@@ -30,6 +30,9 @@ class JsonSheetExporter:
             output. ``None`` disables filtering (all fields).
         sheet_targets: optional ``{sheet_name: target}`` overriding the global
             ``target`` per sheet (e.g. to mark a server-only sheet).
+        only: optional allow-list of sheet names for this output.
+        exclude: optional deny-list of sheet names for this output. ``exclude``
+            is applied after ``only`` when both are present.
     """
 
     def __init__(
@@ -40,6 +43,8 @@ class JsonSheetExporter:
         ensure_ascii: bool = False,
         target: Optional[str] = None,
         sheet_targets: Optional["dict[str, str]"] = None,
+        only: Optional["Iterable[str]"] = None,
+        exclude: Optional["Iterable[str]"] = None,
     ) -> None:
         if isinstance(paths, (str, os.PathLike)):
             self._paths = [Path(paths)]
@@ -52,10 +57,18 @@ class JsonSheetExporter:
         self._ensure_ascii = ensure_ascii
         self._target = target
         self._sheet_targets = dict(sheet_targets or {})
+        self._only = set(only) if only is not None else None
+        self._exclude = set(exclude or ())
 
     def export(self, context: Any) -> bool:
         resolver = getattr(context.container, "contract_resolver", None)
         for name in context.container.get_sheet_properties():
+            if self._only is not None and name not in self._only:
+                self._remove_stale_sheet(name)
+                continue
+            if name in self._exclude:
+                self._remove_stale_sheet(name)
+                continue
             with context.logger.begin_scope(name):
                 sheet = context.container.find(name)
                 if sheet is None:
@@ -70,8 +83,19 @@ class JsonSheetExporter:
                 for d in dirs:
                     d.mkdir(parents=True, exist_ok=True)
                     out_path = d / f"{sheet.name}.json"
-                    out_path.write_text(text, encoding="utf-8")
+                    # newline="" keeps \n as-is on Windows (no CRLF translation),
+                    # so baked JSON stays byte-identical across platforms.
+                    with out_path.open("w", encoding="utf-8", newline="") as f:
+                        f.write(text)
         return True
+
+    def _remove_stale_sheet(self, name: str) -> None:
+        """Remove an older generated file when a sheet is no longer selected."""
+        dirs = self._sheet_paths.get(name, self._paths)
+        for directory in dirs:
+            path = directory / f"{name}.json"
+            if path.exists():
+                path.unlink()
 
 
 def _ascii_escape(text: str) -> str:

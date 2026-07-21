@@ -47,6 +47,19 @@ options:
 """
 
 
+CONFIG_EXCLUDE = """
+schema:
+  module: tests.sample_sheets
+  container: GameContainer
+import:
+  source: csv
+  path: {src}
+outputs:
+  - path: {out_c}
+    exclude: [Consumables]
+"""
+
+
 def _write_csv(path, content):
     with open(path, "w", encoding="utf-8", newline="") as f:
         f.write(content)
@@ -116,6 +129,24 @@ def test_sheet_paths_override(tmp_path):
     # Consumables goes only to the override dir, not the global one
     assert (only_dir / "Consumables.json").exists()
     assert not (global_dir / "Consumables.json").exists()
+
+
+def test_output_exclude_omits_entire_sheet(tmp_path):
+    src = tmp_path / "src"; src.mkdir()
+    _write_csv(src / "Consumables.csv", "Id,Name,Price\nX,Secret,5\n")
+    cfg = tmp_path / "exclude.yaml"
+    out = tmp_path / "out"
+    cfg.write_text(
+        CONFIG_EXCLUDE.format(src=str(src), out_c=str(out)),
+        encoding="utf-8",
+    )
+    out.mkdir()
+    (out / "Consumables.json").write_text("stale secret", encoding="utf-8")
+
+    loaded = load_config(str(cfg))
+    assert loaded.outputs[0].exclude == ["Consumables"]
+    assert run(str(cfg)) == 0
+    assert not (out / "Consumables.json").exists()
 
 
 def _write_cfg(tmp_path, src):

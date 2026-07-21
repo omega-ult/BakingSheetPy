@@ -18,6 +18,7 @@ class OutputConfig:
     pretty: bool = True
     indent: Optional[int] = 2
     only: Optional[List[str]] = None
+    exclude: Optional[List[str]] = None
     ensure_ascii: bool = False
     target: Optional[str] = None  # visibility target, e.g. "client" / "server"
     sheet_targets: Optional["dict[str, str]"] = None  # per-sheet target override
@@ -99,6 +100,7 @@ def load_config(path: str) -> RunConfig:
                 pretty=o.get("pretty", True),
                 indent=o.get("indent", 2),
                 only=o.get("only"),
+                exclude=o.get("exclude"),
                 ensure_ascii=o.get("ensure_ascii", False),
                 target=o.get("target"),
                 sheet_targets=o.get("sheet_targets"),
@@ -174,6 +176,8 @@ def build_exporters(cfg: RunConfig):
                 ensure_ascii=o.ensure_ascii,
                 target=o.target,
                 sheet_targets=o.sheet_targets,
+                only=o.only,
+                exclude=o.exclude,
             )
         )
     return exporters
